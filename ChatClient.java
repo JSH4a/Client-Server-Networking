@@ -22,6 +22,6 @@ public class ChatClient extends NetClient<String> {
 
     public static void main(String[] args) {
         ChatClient c1 = new ChatClient("localhost", 14003);
-        ChatClient c2 = new ChatClient("localhost", 14003);
+
     }
 }

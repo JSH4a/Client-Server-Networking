@@ -1,5 +1,4 @@
-import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.*;
 import java.net.Socket;
 
 /**
@@ -14,8 +13,6 @@ public abstract class NetClient<DataType> {
     protected Socket serverSocket;
     protected ClientListener clientListener;
 
-    // The location data will be sent to within the server from the client
-    protected PrintWriter toServerStream;
 
     /**
      * Constructor sets address and port of server and attempts to connect to the specified destination
@@ -40,10 +37,24 @@ public abstract class NetClient<DataType> {
 
         try {
             serverSocket = new Socket(serverAddress, serverPort);
-            toServerStream = new PrintWriter(serverSocket.getOutputStream());
+
+            ObjectOutputStream serverOutput = new ObjectOutputStream(serverSocket.getOutputStream());
+            ObjectInputStream serverInput = new ObjectInputStream(serverSocket.getInputStream());
 
             clientListener = new ClientListener();
             clientListener.start();
+
+            // temporary for taking user input
+            BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+            String userInput;
+
+            NetPacket request;
+
+            do {
+                userInput = br.readLine();
+                request = new NetPacket(userInput);
+                serverOutput.writeObject(request);
+            } while (!request.message.equals("Bye"));
         }
         catch (IOException e) {
             System.out.println("Unable to establish connection to server with address "+serverAddress+" on port "+serverPort);
@@ -52,20 +63,12 @@ public abstract class NetClient<DataType> {
     }
 
     /**
-     * Should send data of specified type to the output stream of the server socket
-     *
-     * @param data The data to be sent to the server
-     */
-    private void sendToServer(DataType data) {
-        toServerStream.println(data);
-    }
-
-    /**
      * Defines what a client should do with received data
      *
      * @param data The data received from the server
      */
     protected abstract void receivedFromServer(DataType data);
+
 
     /**
      * Inner class allows client to listen for server response in separate thread so the client can also transmit

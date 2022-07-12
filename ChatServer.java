@@ -1,5 +1,4 @@
 public class ChatServer extends NetServer{
-
     /**
      * Constructor sets server port number and begins listening for clients
      *
@@ -11,11 +10,20 @@ public class ChatServer extends NetServer{
 
     /**
      * Defines how the server should respond when a client connects
-     *
      */
     @Override
     protected void onClientConnection() {
-        System.out.println("Client "+clientSockets.get(clientSockets.size())+" has connected");
+        System.out.println("Hello "+clientSockets.get(clientSockets.size()-1));
+    }
+
+    /**
+     * Defines how the server should respond when a client sends a message to the server
+     *
+     * @param request
+     */
+    @Override
+    protected void onClientRequest(NetPacket request) {
+        System.out.println(clientSockets.get(clientSockets.size()-1)+request.message);
     }
 
     public static void main(String[] args) {

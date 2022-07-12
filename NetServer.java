@@ -1,4 +1,4 @@
-import java.io.IOException;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -37,6 +37,8 @@ public abstract class NetServer<DataType> {
                 // Accept a connection from a client
                 Socket clientSocket = serverSocket.accept();
                 System.out.println("Server accepted connection on: " + serverSocket.getLocalPort() + " ; " + clientSocket.getPort());
+                // Start a new thread to handle listening to the new client
+                new ClientHandler(clientSocket).start();
                 // Add socket to list of connected sockets
                 clientSockets.add(clientSocket);
 
@@ -59,10 +61,40 @@ public abstract class NetServer<DataType> {
     protected abstract void onClientConnection();
 
     /**
+     * Defines how the server should respond when a client sends a message to the server
+     */
+    protected abstract void onClientRequest(NetPacket request);
+
+    /**
      * Inner class allows server to listen for client transmission in separate thread so the server can also transmit
      * to the server in the main thread
      */
-    private class ClientHandler {
+    private class ClientHandler extends Thread {
+        private Socket clientSocket;
 
+        public ClientHandler(Socket client) {
+            clientSocket = client;
+        }
+
+        public void run() {
+            try {
+                ObjectOutputStream clientOut = new ObjectOutputStream(clientSocket.getOutputStream());
+                ObjectInputStream clientInput = new ObjectInputStream(clientSocket.getInputStream());
+
+                NetPacket request;
+
+                do {
+                    request = (NetPacket) clientInput.readObject();
+                    onClientRequest(request);
+                } while (!request.message.equals("Bye"));
+
+                clientSocket.close();
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }
