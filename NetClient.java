@@ -12,6 +12,8 @@ public abstract class NetClient<DataType> {
     protected int serverPort;
     protected Socket serverSocket;
     protected ClientListener clientListener;
+    protected ObjectOutputStream serverOutput;
+    protected ObjectInputStream serverInput;
 
 
     /**
@@ -38,23 +40,13 @@ public abstract class NetClient<DataType> {
         try {
             serverSocket = new Socket(serverAddress, serverPort);
 
-            ObjectOutputStream serverOutput = new ObjectOutputStream(serverSocket.getOutputStream());
-            ObjectInputStream serverInput = new ObjectInputStream(serverSocket.getInputStream());
+            serverOutput = new ObjectOutputStream(serverSocket.getOutputStream());
+            serverInput = new ObjectInputStream(serverSocket.getInputStream());
 
             clientListener = new ClientListener();
             clientListener.start();
 
-            // temporary for taking user input
-            BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-            String userInput;
-
-            NetPacket request;
-
-            do {
-                userInput = br.readLine();
-                request = new NetPacket(userInput);
-                serverOutput.writeObject(request);
-            } while (!request.message.equals("Bye"));
+            while (runClient());
         }
         catch (IOException e) {
             System.out.println("Unable to establish connection to server with address "+serverAddress+" on port "+serverPort);
@@ -65,9 +57,16 @@ public abstract class NetClient<DataType> {
     /**
      * Defines what a client should do with received data
      *
-     * @param data The data received from the server
+     * @param response The data received from the server
      */
-    protected abstract void receivedFromServer(DataType data);
+    protected abstract void onServerResponse(NetPacket response);
+
+    /**
+     * Defines the main function for the client.
+     * Will terminate the client when returns false.
+     * @return
+     */
+    protected abstract boolean runClient();
 
 
     /**
@@ -75,6 +74,20 @@ public abstract class NetClient<DataType> {
      * to the server in the main thread
      */
     private class ClientListener extends Thread {
+        public void run() {
+            try {
+                NetPacket response;
 
+                do {
+                    response = (NetPacket) serverInput.readObject();
+                    onServerResponse(response);
+                } while (!response.message.equals("Bye"));
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }

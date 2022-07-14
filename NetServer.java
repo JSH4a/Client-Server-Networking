@@ -63,7 +63,7 @@ public abstract class NetServer<DataType> {
     /**
      * Defines how the server should respond when a client sends a message to the server
      */
-    protected abstract void onClientRequest(NetPacket request);
+    protected abstract void onClientRequest(NetPacket request, ObjectOutputStream clientOut);
 
     /**
      * Inner class allows server to listen for client transmission in separate thread so the server can also transmit
@@ -71,6 +71,8 @@ public abstract class NetServer<DataType> {
      */
     private class ClientHandler extends Thread {
         private Socket clientSocket;
+        protected ObjectOutputStream clientOut;
+        protected ObjectInputStream clientInput;
 
         public ClientHandler(Socket client) {
             clientSocket = client;
@@ -78,14 +80,14 @@ public abstract class NetServer<DataType> {
 
         public void run() {
             try {
-                ObjectOutputStream clientOut = new ObjectOutputStream(clientSocket.getOutputStream());
-                ObjectInputStream clientInput = new ObjectInputStream(clientSocket.getInputStream());
+                clientOut = new ObjectOutputStream(clientSocket.getOutputStream());
+                clientInput = new ObjectInputStream(clientSocket.getInputStream());
 
                 NetPacket request;
 
                 do {
                     request = (NetPacket) clientInput.readObject();
-                    onClientRequest(request);
+                    onClientRequest(request, clientOut);
                 } while (!request.message.equals("Bye"));
 
                 clientSocket.close();

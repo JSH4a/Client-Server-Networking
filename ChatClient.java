@@ -1,3 +1,7 @@
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+
 public class ChatClient extends NetClient<String> {
 
     /**
@@ -13,11 +17,34 @@ public class ChatClient extends NetClient<String> {
     /**
      * Defines what a client should do with received data
      *
-     * @param data The data received from the server
+     * @param response The data received from the server
      */
     @Override
-    protected void receivedFromServer(String data) {
+    protected void onServerResponse(NetPacket response) {
+        System.out.println("Echo: " + response.message);
+    }
 
+    @Override
+    protected boolean runClient() {
+        try {
+            // temporary for taking user input
+            BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+            String userInput;
+
+            NetPacket request;
+
+            do {
+                userInput = br.readLine();
+                request = new NetPacket(userInput);
+                serverOutput.writeObject(request);
+            } while (!request.message.equals("Bye"));
+        }
+        catch (IOException e) {
+            System.out.println("Unable to send user input");
+            e.printStackTrace();
+        }
+
+        return false;
     }
 
     public static void main(String[] args) {
