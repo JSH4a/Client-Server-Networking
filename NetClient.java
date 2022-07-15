@@ -4,16 +4,14 @@ import java.net.Socket;
 /**
  * Abstract class for a creating client to communicate over network for a specified data type
  *
- * @param <DataType> The type of data to be sent by the client
  */
-public abstract class NetClient<DataType> {
+public abstract class NetClient {
     // Server socket information
     protected String serverAddress;
     protected int serverPort;
     protected Socket serverSocket;
     protected ClientListener clientListener;
-    protected ObjectOutputStream serverOutput;
-    protected ObjectInputStream serverInput;
+    protected String id;
 
 
     /**
@@ -22,13 +20,13 @@ public abstract class NetClient<DataType> {
      * @param add The address of the server to connect to
      * @param port The port number of the server to connect to
      */
-    public NetClient(String add, int port) {
+    public NetClient(String id, String add, int port) {
         serverAddress = add;
         serverPort = port;
+        this.id = id;
 
         // Establish connection to server and listen for response
         connectToServer();
-
     }
 
     /**
@@ -40,13 +38,10 @@ public abstract class NetClient<DataType> {
         try {
             serverSocket = new Socket(serverAddress, serverPort);
 
-            serverOutput = new ObjectOutputStream(serverSocket.getOutputStream());
-            serverInput = new ObjectInputStream(serverSocket.getInputStream());
-
             clientListener = new ClientListener();
             clientListener.start();
 
-            while (runClient());
+            runClient();
         }
         catch (IOException e) {
             System.out.println("Unable to establish connection to server with address "+serverAddress+" on port "+serverPort);
@@ -54,19 +49,34 @@ public abstract class NetClient<DataType> {
         }
     }
 
+    public void sendToServer(NetPacket<?> packet) {
+        try {
+            ObjectOutputStream serverOutput = new ObjectOutputStream(serverSocket.getOutputStream());
+            serverOutput.writeObject(packet);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    private void handshake() {
+        NetPacket<String> handshakePacket = new NetPacket<>(id, "server", id);
+        sendToServer(handshakePacket);
+    }
+
     /**
      * Defines what a client should do with received data
      *
      * @param response The data received from the server
      */
-    protected abstract void onServerResponse(NetPacket response);
+    protected abstract void onServerResponse(NetPacket<?> response);
 
     /**
      * Defines the main function for the client.
      * Will terminate the client when returns false.
-     * @return
      */
-    protected abstract boolean runClient();
+    protected abstract void runClient();
 
 
     /**
@@ -76,16 +86,20 @@ public abstract class NetClient<DataType> {
     private class ClientListener extends Thread {
         public void run() {
             try {
-                NetPacket response;
+                NetPacket<?> response;
 
                 do {
-                    response = (NetPacket) serverInput.readObject();
-                    onServerResponse(response);
-                } while (!response.message.equals("Bye"));
+                    ObjectInputStream serverInput = new ObjectInputStream(serverSocket.getInputStream());
+                    response = (NetPacket<?>) serverInput.readObject();
 
-            } catch (IOException e) {
-                e.printStackTrace();
-            } catch (ClassNotFoundException e) {
+                    if (response.payload.equals("Send ID")) {
+                        handshake();
+                    }
+
+                    onServerResponse(response);
+                } while (!response.payload.equals("Bye"));
+
+            } catch (IOException | ClassNotFoundException e) {
                 e.printStackTrace();
             }
         }

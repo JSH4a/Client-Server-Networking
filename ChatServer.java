@@ -1,7 +1,3 @@
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-
 public class ChatServer extends NetServer{
     /**
      * Constructor sets server port number and begins listening for clients
@@ -17,22 +13,18 @@ public class ChatServer extends NetServer{
      */
     @Override
     protected void onClientConnection() {
-        System.out.println("Hello "+clientSockets.get(clientSockets.size()-1));
+        System.out.print(connectedClients.toString());
     }
 
     /**
      * Defines how the server should respond when a client sends a message to the server
      *
-     * @param request
+     * @param request the request data packet that was received from the client
      */
     @Override
-    protected void onClientRequest(NetPacket request, ObjectOutputStream clientOutput) {
-        try {
-            clientOutput.writeObject(request);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        System.out.println(clientSockets.get(clientSockets.size()-1)+request.message);
+    protected void onClientRequest(NetPacket request) {
+        sendToClient(request);
+        System.out.println(request.recipient + " to " + request.sender);
     }
 
     public static void main(String[] args) {
